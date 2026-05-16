@@ -1,0 +1,1596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chronicle — Calendar Archive Cleaner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #1a1a2e;
+    --ink-2: #3d3d5c;
+    --ink-3: #7a7a9a;
+    --paper: #faf8f4;
+    --paper-2: #f2efe8;
+    --paper-3: #e8e4d9;
+    --accent: #c8432a;
+    --accent-light: #f5e8e5;
+    --gold: #b8860b;
+    --gold-light: #fdf6e3;
+    --green: #2d6a4f;
+    --green-light: #e8f5ee;
+    --border: rgba(26,26,46,0.12);
+    --border-strong: rgba(26,26,46,0.25);
+    --radius: 4px;
+    --radius-lg: 8px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* MASTHEAD */
+  .masthead {
+    border-bottom: 2px solid var(--ink);
+    padding: 0;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .masthead-rule { width: 100%; height: 4px; background: var(--accent); }
+  .masthead-inner { padding: 2rem 2rem 1.5rem; }
+  .masthead-eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 0.5rem;
+  }
+  .masthead h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: var(--ink);
+    margin-bottom: 0.25rem;
+  }
+  .masthead h1 em { font-style: italic; color: var(--accent); }
+  .masthead-sub {
+    font-size: 13px;
+    color: var(--ink-3);
+    font-weight: 300;
+    margin-top: 0.75rem;
+  }
+  .masthead-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--green-light);
+    color: var(--green);
+    border: 1px solid var(--green);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    padding: 4px 10px;
+    border-radius: 20px;
+    margin-top: 1rem;
+  }
+  .masthead-badge::before { content: '●'; font-size: 8px; }
+
+  /* MAIN LAYOUT */
+  .main { max-width: 900px; margin: 0 auto; padding: 3rem 2rem; }
+
+  /* UPLOAD ZONE */
+  .upload-zone {
+    border: 2px dashed var(--border-strong);
+    border-radius: var(--radius-lg);
+    padding: 3rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--paper-2);
+    position: relative;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+  .upload-zone input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .upload-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    display: block;
+  }
+  .upload-zone h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.5rem;
+    font-weight: 400;
+    margin-bottom: 0.5rem;
+  }
+  .upload-zone p { font-size: 13px; color: var(--ink-3); }
+  .upload-privacy {
+    margin-top: 1rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    color: var(--green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .upload-privacy::before { content: '🔒'; }
+
+  /* SECTION HEADINGS */
+  .section-rule {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 2.5rem 0 1.5rem;
+  }
+  .section-rule h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.5rem;
+    font-weight: 400;
+    white-space: nowrap;
+  }
+  .section-rule::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-strong);
+  }
+
+  /* FILE LIST */
+  .file-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: var(--paper-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 0.5rem;
+  }
+  .file-name { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--ink-2); }
+  .file-size { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--ink-3); }
+  .file-remove {
+    background: none; border: none; cursor: pointer;
+    color: var(--ink-3); font-size: 18px; line-height: 1;
+    padding: 2px 6px; border-radius: 3px;
+    transition: all 0.15s;
+  }
+  .file-remove:hover { color: var(--accent); background: var(--accent-light); }
+
+  /* OPTION TOGGLES */
+  .options-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+  }
+  .option-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: var(--paper-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .option-card:hover { border-color: var(--border-strong); }
+  .option-card.active {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+  .option-card input[type=checkbox] { margin-top: 2px; accent-color: var(--accent); flex-shrink: 0; }
+  .option-label { font-size: 14px; font-weight: 500; }
+  .option-desc { font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+
+  /* PRIMARY BUTTON */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    padding: 0.875rem 2rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-primary:hover { background: var(--accent); transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--border-strong);
+    padding: 0.75rem 1.5rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 400;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-secondary:hover { background: var(--paper-2); border-color: var(--ink); }
+
+  /* STATS GRID */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .stat-card {
+    background: var(--paper-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1rem;
+  }
+  .stat-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 0.4rem;
+  }
+  .stat-value {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2rem;
+    font-weight: 400;
+    line-height: 1;
+    color: var(--ink);
+  }
+  .stat-value.accent { color: var(--accent); }
+  .stat-value.green { color: var(--green); }
+  .stat-sub { font-size: 11px; color: var(--ink-3); margin-top: 0.25rem; }
+
+  /* SIZE BAR */
+  .size-comparison {
+    background: var(--paper-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  .size-bar-wrap { margin: 0.75rem 0 0.5rem; }
+  .size-bar-track {
+    background: var(--paper-3);
+    border-radius: 99px;
+    height: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .size-bar-fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width 1s ease;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 8px;
+  }
+  .size-bar-fill.original { background: var(--ink-3); }
+  .size-bar-fill.cleaned { background: var(--green); }
+  .size-bar-labels {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-3);
+  }
+
+  /* WARNINGS */
+  .warning-list { margin-bottom: 1.5rem; }
+  .warning-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--gold-light);
+    border: 1px solid var(--gold);
+    border-radius: var(--radius);
+    margin-bottom: 0.5rem;
+    font-size: 13px;
+    color: var(--gold);
+  }
+  .warning-item::before { content: '⚠'; flex-shrink: 0; }
+
+  /* EVENT PREVIEW */
+  .preview-list { margin-bottom: 2rem; }
+  .event-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: 0.75rem;
+  }
+  .event-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: var(--paper-2);
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .event-title { font-size: 14px; font-weight: 500; }
+  .event-date { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--ink-3); }
+  .event-badges { display: flex; gap: 0.4rem; }
+  .badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+  .badge-cleaned { background: var(--green-light); color: var(--green); border: 1px solid var(--green); }
+  .badge-attendees { background: var(--gold-light); color: var(--gold); border: 1px solid var(--gold); }
+  .badge-stripped { background: var(--accent-light); color: var(--accent); border: 1px solid var(--accent); }
+  .event-body {
+    padding: 1rem;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    background: var(--paper);
+    display: none;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--ink-2);
+    line-height: 1.7;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  .event-body.open { display: block; }
+  .event-chevron { font-size: 12px; color: var(--ink-3); transition: transform 0.2s; }
+  .event-chevron.open { transform: rotate(180deg); }
+
+  /* DOWNLOAD FILES LIST */
+  .download-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+  }
+  .download-card {
+    background: var(--green-light);
+    border: 1px solid var(--green);
+    border-radius: var(--radius-lg);
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-decoration: none;
+  }
+  .download-card:hover { background: #d4eddf; transform: translateY(-1px); }
+  .download-icon { font-size: 1.5rem; }
+  .download-info .name { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--green); font-weight: 500; }
+  .download-info .size { font-size: 11px; color: var(--ink-3); margin-top: 2px; }
+
+  .progress-wrap { margin: 2rem 0; }
+  .progress-track {
+    background: var(--paper-3);
+    border-radius: 99px;
+    height: 6px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 99px;
+    transition: width 0.3s;
+  }
+  .progress-label { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--ink-3); }
+
+  .hidden { display: none; }
+  .btn-row { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+
+  .intro-text {
+    font-size: 14px;
+    color: var(--ink-2);
+    line-height: 1.7;
+    max-width: 600px;
+    margin-bottom: 2.5rem;
+    border-left: 3px solid var(--accent);
+    padding-left: 1rem;
+  }
+  .guided-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--paper-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 14px;
+    transition: all 0.2s;
+  }
+  .guided-step.done {
+    background: var(--green-light);
+    border-color: var(--green);
+    opacity: 0.7;
+  }
+  .guided-step.done .step-num { background: var(--green); color: white; }
+  .step-num {
+    flex-shrink: 0;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 500;
+  }
+  .step-text { line-height: 1.5; padding-top: 2px; }
+  .step-text code {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    background: var(--paper-3);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  .footer-note {
+    text-align: center;
+    font-size: 12px;
+    color: var(--ink-3);
+    margin-top: 4rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border);
+    font-family: 'DM Mono', monospace;
+  }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-rule"></div>
+  <div class="masthead-inner">
+    <div class="masthead-eyebrow">Work History Preservation Tool</div>
+    <h1>Chroni<em>cle</em></h1>
+    <div class="masthead-sub">Convert corporate calendar exports into a clean personal archive</div>
+    <div class="masthead-badge">100% browser-based — your calendar never leaves this device</div>
+  </div>
+  <div class="masthead-rule"></div>
+</header>
+
+<main class="main">
+
+  <p class="intro-text">
+    Years of meetings, decisions, and collaborations — preserved. Upload your Google Workspace <code>.ics</code> exports and Chronicle will strip out stale meeting links, preserve attendee information cleanly, then split files into Google Calendar–ready chunks under 1 MB each.
+  </p>
+
+  <!-- STEP 1: UPLOAD -->
+  <div class="section-rule"><h2>1. Upload your .ics files</h2></div>
+
+  <div class="upload-zone" id="dropZone">
+    <input type="file" id="fileInput" accept=".ics,.zip" multiple>
+    <span class="upload-icon">📅</span>
+    <h2>Drop .ics or .zip files here</h2>
+    <p>or click to browse — accepts .ics files and Google Takeout .zip exports</p>
+    <div class="upload-privacy">Everything runs locally in your browser. Zero uploads to any server.</div>
+  </div>
+
+  <div id="fileList" class="hidden">
+    <div class="section-rule" style="margin-top:1.5rem;"><h2>Files ready</h2></div>
+    <div id="fileItems"></div>
+  </div>
+
+  <!-- STEP 2: OPTIONS -->
+  <div id="optionSection" class="hidden">
+    <div class="section-rule"><h2>2. Cleanup options</h2></div>
+    <div class="options-grid">
+      <label class="option-card active" id="opt-links-card">
+        <input type="checkbox" id="opt-links" checked>
+        <div>
+          <div class="option-label">Remove meeting links</div>
+          <div class="option-desc">Zoom, Meet, Teams, Webex, GoTo — all dial-in jargon stripped</div>
+        </div>
+      </label>
+      <label class="option-card active" id="opt-attendees-card">
+        <input type="checkbox" id="opt-attendees" checked>
+        <div>
+          <div class="option-label">Preserve attendees</div>
+          <div class="option-desc">Move names & emails into description before removing ATTENDEE properties</div>
+        </div>
+      </label>
+      <label class="option-card active" id="opt-strip-card">
+        <input type="checkbox" id="opt-strip" checked>
+        <div>
+          <div class="option-label">Strip invite metadata</div>
+          <div class="option-desc">Remove METHOD:REQUEST, RSVP flags, stale conferencing fields</div>
+        </div>
+      </label>
+      <label class="option-card active" id="opt-alarms-card">
+        <input type="checkbox" id="opt-alarms" checked>
+        <div>
+          <div class="option-label">Remove alarms</div>
+          <div class="option-desc">Delete VALARM reminders — not needed in a diary archive</div>
+        </div>
+      </label>
+      <label class="option-card active" id="opt-cap-card" style="border-color:var(--accent);background:var(--accent-light);">
+        <input type="checkbox" id="opt-cap" checked style="accent-color:var(--accent);">
+        <div>
+          <div class="option-label">Skip attendees on large events</div>
+          <div class="option-desc">
+            Ignore attendee list if over
+            <input type="number" id="opt-cap-value" value="25" min="1" max="999"
+              onclick="event.stopPropagation()" onchange="event.stopPropagation()"
+              style="width:46px;padding:1px 4px;font-family:'DM Mono',monospace;font-size:12px;
+                     border:1px solid var(--accent);border-radius:3px;
+                     background:var(--paper);color:var(--ink);text-align:center;
+                     vertical-align:baseline;display:inline-block;">
+            attendees — town halls, all-hands
+          </div>
+        </div>
+      </label>
+      <label class="option-card" id="opt-declined-card">
+        <input type="checkbox" id="opt-declined">
+        <div>
+          <div class="option-label">Declined events</div>
+          <div class="option-desc">
+            <select id="opt-declined-action"
+              onclick="event.stopPropagation()" onchange="event.stopPropagation()"
+              style="margin-top:4px;width:100%;padding:2px 4px;font-family:'DM Mono',monospace;font-size:11px;
+                     border:1px solid var(--border-strong);border-radius:3px;
+                     background:var(--paper);color:var(--ink);">
+              <option value="skip">Skip entirely — remove from archive</option>
+              <option value="flag">Flag with [DECLINED] prefix</option>
+              <option value="keep">Keep as-is (default)</option>
+            </select>
+          </div>
+        </div>
+      </label>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-primary" id="processBtn">Analyze &amp; Clean →</button>
+    </div>
+  </div>
+
+  <!-- STEP 3: REPORT -->
+  <div id="reportSection" class="hidden">
+    <div class="section-rule"><h2>3. Cleanup report</h2></div>
+
+    <div class="stats-grid" id="statsGrid"></div>
+
+    <div class="size-comparison">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;">
+        <span style="font-size:14px;font-weight:500;">File size reduction</span>
+        <span id="reductionPct" style="font-family:'DM Serif Display',serif;font-size:1.5rem;color:var(--green);"></span>
+      </div>
+      <div class="size-bar-wrap">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-3);margin-bottom:4px;">ORIGINAL</div>
+        <div class="size-bar-track"><div class="size-bar-fill original" id="barOriginal" style="width:100%;"></div></div>
+        <div class="size-bar-wrap" style="margin-top:6px;">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--green);margin-bottom:4px;">CLEANED</div>
+          <div class="size-bar-track"><div class="size-bar-fill cleaned" id="barCleaned" style="width:0%;"></div></div>
+        </div>
+      </div>
+      <div class="size-bar-labels">
+        <span id="labelOriginal">—</span>
+        <span id="labelCleaned">—</span>
+      </div>
+    </div>
+
+    <div id="warningSection" class="warning-list hidden"></div>
+
+    <div class="section-rule"><h2>Event preview</h2></div>
+    <p style="font-size:13px;color:var(--ink-3);margin-bottom:1rem;">Click any event to preview its cleaned content.</p>
+    <div id="previewList" class="preview-list"></div>
+
+    <div class="btn-row" style="margin-top:2rem;">
+      <button class="btn-primary" id="splitBtn">Generate downloadable .ics chunks →</button>
+      <button class="btn-secondary" id="resetBtn">← Start over</button>
+    </div>
+  </div>
+
+  <!-- STEP 4: GUIDED IMPORT -->
+  <div id="downloadSection" class="hidden">
+    <div class="section-rule"><h2>4. Import into Google Calendar</h2></div>
+
+    <!-- Mode toggle -->
+    <div style="display:flex;gap:0.5rem;margin-bottom:1.5rem;">
+      <button class="btn-secondary" id="modeGuided" style="border-color:var(--ink);font-weight:500;">🧭 Guided import</button>
+      <button class="btn-secondary" id="modeAll">⬇ Download all at once</button>
+    </div>
+
+    <!-- GUIDED MODE -->
+    <div id="guidedPanel">
+      <div style="margin-bottom:1.5rem;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.4rem;">
+          <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--ink-3);">PROGRESS</span>
+          <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--ink-3);" id="progressLabel">File 1 of —</span>
+        </div>
+        <div style="background:var(--paper-3);border-radius:99px;height:6px;overflow:hidden;">
+          <div id="guidedProgressBar" style="height:100%;background:var(--green);border-radius:99px;width:0%;transition:width 0.4s;"></div>
+        </div>
+      </div>
+
+      <div id="guidedCard" style="border:2px solid var(--ink);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:1.5rem;">
+        <div style="background:var(--ink);color:var(--paper);padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;opacity:0.6;margin-bottom:0.25rem;">CURRENT FILE</div>
+            <div style="font-family:'DM Serif Display',serif;font-size:1.25rem;" id="guidedFilename">—</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-family:'DM Mono',monospace;font-size:10px;opacity:0.6;margin-bottom:0.25rem;">SIZE</div>
+            <div style="font-family:'DM Mono',monospace;font-size:13px;" id="guidedFilesize">—</div>
+          </div>
+        </div>
+        <div style="padding:1.25rem;background:var(--paper);">
+          <div style="font-size:13px;color:var(--ink-3);margin-bottom:1rem;font-family:'DM Mono',monospace;letter-spacing:0.05em;">FOLLOW THESE STEPS</div>
+          <div id="guidedSteps" style="display:flex;flex-direction:column;gap:0.75rem;">
+            <div class="guided-step" data-step="1">
+              <div class="step-num">1</div>
+              <div class="step-text">Click <strong>Download this file</strong> below — it will save to your Downloads folder</div>
+            </div>
+            <div class="guided-step" data-step="2">
+              <div class="step-num">2</div>
+              <div class="step-text">Open <a href="https://calendar.google.com" target="_blank" style="color:var(--accent);">calendar.google.com</a> in a new tab</div>
+            </div>
+            <div class="guided-step" data-step="3">
+              <div class="step-num">3</div>
+              <div class="step-text">Click the <strong>⚙ gear icon</strong> → <strong>Settings</strong></div>
+            </div>
+            <div class="guided-step" data-step="4">
+              <div class="step-num">4</div>
+              <div class="step-text">In the left sidebar click <strong>Import &amp; export</strong></div>
+            </div>
+            <div class="guided-step" data-step="5">
+              <div class="step-num">5</div>
+              <div class="step-text">Click <strong>Select file from your computer</strong> → choose <code id="guidedFilenameCode">—</code> → click <strong>Import</strong></div>
+            </div>
+            <div class="guided-step" data-step="6">
+              <div class="step-num">6</div>
+              <div class="step-text">Wait for Google to confirm <em>"X events imported"</em> — then come back here and click <strong>Done, next file →</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row" id="guidedActions">
+        <button class="btn-primary" id="guidedDownloadBtn">⬇ Download this file</button>
+        <button class="btn-primary" id="guidedNextBtn" style="background:var(--green);display:none;">Done, next file →</button>
+        <button class="btn-secondary" id="resetBtn2">← Start over</button>
+      </div>
+
+      <div id="guidedDone" class="hidden" style="text-align:center;padding:3rem 2rem;border:2px solid var(--green);border-radius:var(--radius-lg);background:var(--green-light);margin-top:1.5rem;">
+        <div style="font-size:3rem;margin-bottom:1rem;">🎉</div>
+        <div style="font-family:'DM Serif Display',serif;font-size:2rem;color:var(--green);margin-bottom:0.5rem;">All done.</div>
+        <div style="font-size:14px;color:var(--ink-2);margin-bottom:1.5rem;" id="doneMessage">Your work history is now preserved in Google Calendar.</div>
+        <button class="btn-secondary" id="resetBtn3">← Archive another calendar</button>
+      </div>
+    </div>
+
+    <!-- ALL AT ONCE MODE -->
+    <div id="allAtOncePanel" class="hidden">
+      <p style="font-size:13px;color:var(--ink-2);margin-bottom:1rem;">All files will download at once. Import each one individually via <strong>Settings → Import &amp; export → Import</strong>.</p>
+      <div id="downloadGrid" class="download-grid"></div>
+      <div class="btn-row" style="margin-top:1rem;">
+        <button class="btn-secondary" id="downloadAllBtn">⬇ Download all files</button>
+        <button class="btn-secondary" id="resetBtn4">← Start over</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    Chronicle processes everything in your browser. No data is transmitted, stored, or logged anywhere.<br>
+    Built for people preserving their professional history.
+  </div>
+
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+const MAX_CHUNK_BYTES = 990 * 1024; // strict 1 MB Google limit, 10 KB safety margin
+const MAX_CHUNK_EVENTS = 900;        // Google soft cap ~1000; stay safely under
+
+let rawFiles = [];
+let cleanedEvents = [];
+let calendarMeta = {};
+let originalTotalBytes = 0;
+let cleanedTotalBytes = 0;
+let stats = {};
+
+// UI refs
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const fileList = document.getElementById('fileList');
+const fileItems = document.getElementById('fileItems');
+const optionSection = document.getElementById('optionSection');
+const reportSection = document.getElementById('reportSection');
+const downloadSection = document.getElementById('downloadSection');
+
+// Option toggle active states
+document.querySelectorAll('.option-card input[type=checkbox]').forEach(cb => {
+  cb.addEventListener('change', () => {
+    const card = cb.closest('.option-card');
+    const isCap = cb.id === 'opt-cap';
+    const isDeclined = cb.id === 'opt-declined';
+    if (cb.checked) {
+      card.classList.add('active');
+      if (isCap) { card.style.borderColor = 'var(--accent)'; card.style.background = 'var(--accent-light)'; }
+      if (isDeclined) { document.getElementById('opt-declined-action').disabled = false; }
+    } else {
+      card.classList.remove('active');
+      if (isCap) { card.style.borderColor = 'var(--border)'; card.style.background = 'var(--paper-2)'; }
+      if (isDeclined) { document.getElementById('opt-declined-action').disabled = true; }
+    }
+  });
+});
+// Select starts disabled until checkbox is ticked
+document.getElementById('opt-declined-action').disabled = true;
+
+// DRAG AND DROP
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  handleFiles([...e.dataTransfer.files]);
+});
+fileInput.addEventListener('change', () => handleFiles([...fileInput.files]));
+
+async function handleFiles(files) {
+  for (const file of files) {
+    if (file.name.toLowerCase().endsWith('.zip')) {
+      try {
+        const zip = await JSZip.loadAsync(file);
+        const icsEntries = Object.values(zip.files).filter(f =>
+          !f.dir && f.name.toLowerCase().endsWith('.ics')
+        );
+        if (icsEntries.length === 0) {
+          alert(`No .ics files found inside ${file.name}`);
+          continue;
+        }
+        for (const entry of icsEntries) {
+          const text = await entry.async('text');
+          // Wrap as a pseudo-File so the rest of the pipeline works unchanged
+          const blob = new Blob([text], { type: 'text/calendar' });
+          const pseudoFile = new File([blob], entry.name.split('/').pop(), { type: 'text/calendar' });
+          pseudoFile._fromZip = file.name;
+          rawFiles.push(pseudoFile);
+        }
+      } catch (err) {
+        alert(`Could not read ZIP file ${file.name}: ${err.message}`);
+      }
+    } else if (file.name.toLowerCase().endsWith('.ics')) {
+      rawFiles.push(file);
+    }
+  }
+  renderFileList();
+}
+
+function renderFileList() {
+  if (rawFiles.length === 0) {
+    fileList.classList.add('hidden');
+    optionSection.classList.add('hidden');
+    return;
+  }
+  fileList.classList.remove('hidden');
+  optionSection.classList.remove('hidden');
+  fileItems.innerHTML = rawFiles.map((f, i) => `
+    <div class="file-item">
+      <div>
+        <span class="file-name">📄 ${f.name}</span>
+        ${f._fromZip ? `<span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-3);margin-left:8px;">from ${f._fromZip}</span>` : ''}
+      </div>
+      <span class="file-size">${fmtBytes(f.size)}</span>
+      <button class="file-remove" data-i="${i}" title="Remove">×</button>
+    </div>
+  `).join('');
+  fileItems.querySelectorAll('.file-remove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      rawFiles.splice(+btn.dataset.i, 1);
+      renderFileList();
+    });
+  });
+}
+
+function fmtBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(2) + ' MB';
+}
+
+// PROCESS
+document.getElementById('processBtn').addEventListener('click', async () => {
+  const capEnabled = document.getElementById('opt-cap').checked;
+  const capValue = parseInt(document.getElementById('opt-cap-value').value, 10) || 25;
+  const declinedEnabled = document.getElementById('opt-declined').checked;
+  const declinedAction = declinedEnabled
+    ? document.getElementById('opt-declined-action').value
+    : 'keep';
+  const opts = {
+    stripLinks: document.getElementById('opt-links').checked,
+    preserveAttendees: document.getElementById('opt-attendees').checked,
+    stripInvite: document.getElementById('opt-strip').checked,
+    stripAlarms: document.getElementById('opt-alarms').checked,
+    attendeeCap: capEnabled ? capValue : Infinity,
+    declinedAction
+  };
+
+  const btn = document.getElementById('processBtn');
+  btn.textContent = 'Processing…';
+  btn.disabled = true;
+
+  await new Promise(r => setTimeout(r, 50));
+
+  try {
+    await processFiles(opts);
+    renderReport();
+    reportSection.classList.remove('hidden');
+    reportSection.scrollIntoView({ behavior: 'smooth' });
+  } catch(e) {
+    alert('Error processing files: ' + e.message);
+    console.error(e);
+  }
+
+  btn.textContent = 'Analyze & Clean →';
+  btn.disabled = false;
+});
+
+async function readFile(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.onerror = () => rej(new Error('Could not read ' + file.name));
+    r.readAsText(file, 'utf-8');
+  });
+}
+
+// ICS PARSER — handles line folding per RFC 5545
+function unfoldLines(text) {
+  return text.replace(/\r\n[ \t]/g, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+}
+
+function parseICS(text) {
+  const lines = unfoldLines(text).split('\n');
+  const events = [];
+  const timezones = [];
+  let meta = {};
+  let current = null;
+  let inAlarm = false;
+  let inTZ = false;
+  let tzLines = [];
+  let alarmLines = [];
+  let metaLines = [];
+
+  for (let line of lines) {
+    const sep = line.indexOf(':');
+    if (sep === -1) continue;
+    const rawKey = line.substring(0, sep).trim();
+    const value = line.substring(sep + 1).trim();
+    const keyBase = rawKey.split(';')[0].toUpperCase();
+
+    if (keyBase === 'BEGIN' && value.toUpperCase() === 'VCALENDAR') {
+      meta = {};
+      continue;
+    }
+    if (keyBase === 'END' && value.toUpperCase() === 'VCALENDAR') continue;
+
+    if (keyBase === 'BEGIN' && value.toUpperCase() === 'VTIMEZONE') {
+      inTZ = true; tzLines = [line]; continue;
+    }
+    if (inTZ) {
+      tzLines.push(line);
+      if (keyBase === 'END' && value.toUpperCase() === 'VTIMEZONE') {
+        timezones.push(tzLines.join('\r\n'));
+        inTZ = false;
+      }
+      continue;
+    }
+
+    if (keyBase === 'BEGIN' && value.toUpperCase() === 'VEVENT') {
+      current = { _lines: [line], _attendees: [], _organizer: null, _alarms: [] };
+      continue;
+    }
+    if (current === null) {
+      if (!['BEGIN','END','VERSION','PRODID','CALSCALE','METHOD','X-WR-CALNAME','X-WR-CALDESC','X-WR-TIMEZONE'].includes(keyBase)) {
+        metaLines.push(line);
+      } else {
+        meta[keyBase] = value;
+      }
+      continue;
+    }
+
+    if (keyBase === 'BEGIN' && value.toUpperCase() === 'VALARM') {
+      inAlarm = true; alarmLines = []; continue;
+    }
+    if (inAlarm) {
+      if (keyBase === 'END' && value.toUpperCase() === 'VALARM') {
+        inAlarm = false; current._alarms.push(alarmLines.slice());
+      } else alarmLines.push(line);
+      continue;
+    }
+
+    if (keyBase === 'END' && value.toUpperCase() === 'VEVENT') {
+      current._lines.push(line);
+      events.push(current);
+      current = null;
+      continue;
+    }
+
+    // Parse special fields
+    if (keyBase === 'ATTENDEE') {
+      const params = rawKey.split(';');
+      let cn = '', email = '', role = 'REQ-PARTICIPANT', partstat = '', rsvp = '', cutype = '';
+      for (let p of params) {
+        if (p.startsWith('CN=')) cn = p.slice(3).replace(/^"|"$/g, '');
+        if (p.startsWith('ROLE=')) role = p.slice(5);
+        if (p.startsWith('PARTSTAT=')) partstat = p.slice(9);
+        if (p.startsWith('RSVP=')) rsvp = p.slice(5);
+        if (p.startsWith('CUTYPE=')) cutype = p.slice(7);
+      }
+      email = value.replace(/^mailto:/i, '');
+      current._attendees.push({ cn, email, role, partstat, rsvp, cutype });
+      // Track the calendar owner's own response — identified by CUTYPE=INDIVIDUAL
+      // or as a fallback the first ATTENDEE with a PARTSTAT set (Google puts owner first)
+      if (!current._selfPartstat) {
+        if (cutype === 'INDIVIDUAL' || partstat) {
+          current._selfPartstat = partstat.toUpperCase();
+        }
+      }
+    } else if (keyBase === 'ORGANIZER') {
+      const params = rawKey.split(';');
+      let cn = '';
+      for (let p of params) { if (p.startsWith('CN=')) cn = p.slice(3).replace(/^"|"$/g, ''); }
+      const email = value.replace(/^mailto:/i, '');
+      current._organizer = { cn, email };
+    } else if (keyBase === 'DESCRIPTION') {
+      current._description = value.replace(/\\n/g, '\n').replace(/\\,/g, ',').replace(/\\\\/g, '\\');
+    } else if (keyBase === 'SUMMARY') {
+      current._summary = value.replace(/\\,/g, ',');
+    } else if (keyBase === 'DTSTART') {
+      current._dtstart = value;
+    } else if (keyBase === 'DTEND') {
+      current._dtend = value;
+    } else if (keyBase === 'UID') {
+      current._uid = value;
+    } else if (keyBase === 'LOCATION') {
+      current._location = value;
+    } else if (keyBase === 'RRULE') {
+      current._rrule = value;
+    }
+    current._lines.push(line);
+  }
+
+  return { events, timezones, meta };
+}
+
+// MEETING LINK PATTERNS
+const meetingPatterns = [
+  /https?:\/\/[\w.-]*zoom\.us\/[^\s\\]*/gi,
+  /https?:\/\/meet\.google\.com\/[^\s\\]*/gi,
+  /https?:\/\/[\w.-]*teams\.microsoft\.com\/[^\s\\]*/gi,
+  /https?:\/\/[\w.-]*webex\.com\/[^\s\\]*/gi,
+  /https?:\/\/[\w.-]*gotomeeting\.com\/[^\s\\]*/gi,
+  /https?:\/\/[\w.-]*bluejeans\.com\/[^\s\\]*/gi,
+  /https?:\/\/[\w.-]*whereby\.com\/[^\s\\]*/gi,
+  /https?:\/\/[\w.-]*ringcentral\.com\/[^\s\\]*/gi,
+  /Join (with |)(Google Meet|Zoom|Microsoft Teams|Webex|GoToMeeting)[^\n]*/gi,
+  /Meeting ID:.*?(\n|$)/gi,
+  /Passcode:.*?(\n|$)/gi,
+  /Password:.*?(\n|$)/gi,
+  /One tap mobile[^\n]*/gi,
+  /Dial by your location[^\n]*/gi,
+  /\+\d[\d\s]{7,}#[^\n]*/g,
+  /https?:\/\/[\w.-]*\/j\/\d+[^\s\\]*/gi,
+  /\b\d{9,11}#?\b.*?(meeting id|passcode)/gi,
+  /\(US\).*?(\n|$)/gi,
+  /Find your local number:[^\n]*/gi,
+  /Or One Tap Mobile:[^\n]*/gi,
+  /Or dial:[^\n]*/gi,
+  /https?:\/\/[\w./-]+\?[^\s\\]*(pwd|authtoken|invite)[^\s\\]*/gi,
+  /Video call link:[^\n]*/gi,
+  /-+\s*\n?.*?conference.*?details.*?-+/gi,
+  /join the meeting.*?(\n|$)/gi,
+  /\bjoin\b.*?\bhttps?:\/\/\S+/gi,
+
+  // Google Meet tilde divider blocks — the -::~:~::~: signature separator
+  // Matches the full block from the first dash-tilde line to the closing dash-tilde line
+  /-:{0,2}(?:~:)+[^]*?(?:~:)+-:{0,2}/gi,
+
+  // Google Meet "Learn more" footer lines
+  /Learn more about (Google Meet|Meet) at:[^\n]*/gi,
+  /https?:\/\/support\.google\.com\/[^\s\\]*/gi,
+  /Please do not edit this section\./gi,
+
+  // Leftover tilde sequences that survive partial matches
+  /(?:~:){2,}[-~:]*/g,
+  /[-:]{2,}(?:~:)+[-:~]*/g,
+
+  // Google calendar conference data block
+  /https?:\/\/[\w.-]*\.google\.com\/[^\s\\]*meet[^\s\\]*/gi,
+
+  // "View your event" and Google calendar links
+  /View your event at[^\n]*/gi,
+  /https?:\/\/www\.google\.com\/calendar\/[^\s\\]*/gi,
+  /https?:\/\/calendar\.google\.com\/[^\s\\]*/gi,
+
+  // Webex "Join from" blocks
+  /Join from a video system[^\n]*/gi,
+  /Join from the meeting room[^\n]*/gi,
+  /sip:[^\s\\]+/gi,
+
+  // Teams-specific leftover blocks
+  /Microsoft Teams meeting[^\n]*/gi,
+  /Click here to join[^\n]*/gi,
+  /Learn More \| Meeting options[^\n]*/gi,
+  /Teams \| Meeting options[^\n]*/gi,
+  /https?:\/\/teams\.microsoft\.com\/[^\s\\]*/gi,
+
+  // Zoom leftover blocks
+  /https?:\/\/[\w.-]*\.zoom\.us\/[^\s\\]*/gi,
+  /Zoom Meeting[^\n]*/gi,
+  /Launch Meeting[^\n]*/gi,
+
+  // Generic "add to calendar" / "view event" footer links
+  /Add this to your calendar[^\n]*/gi,
+  /Respond to this invitation[^\n]*/gi,
+  /You have been invited[^\n]*/gi,
+
+  // Stray conference phone number lines (various formats)
+  /(?:Phone|Dial|Call)[^\n]*\+\d[\d\s().,-]{6,}[^\n]*/gi,
+  /PIN:?\s*\d{4,}[^\n]*/gi,
+  /Access code:?\s*[\d\s-]+[^\n]*/gi,
+
+  // "Not going?" / RSVP footer lines Google sometimes appends
+  /Not going\?[^\n]*/gi,
+  /More options:[^\n]*/gi,
+  /Organizer:[^\n]*(http)[^\n]*/gi,
+];
+
+function stripMeetingLinks(text) {
+  let cleaned = text;
+  let count = 0;
+  for (const pat of meetingPatterns) {
+    const before = cleaned;
+    cleaned = cleaned.replace(pat, '');
+    if (cleaned !== before) count++;
+  }
+  // Final pass: remove lines that are nothing but punctuation/symbols left behind
+  cleaned = cleaned.replace(/^[\s:~\-=_|*#.]{3,}$/gm, '');
+  // Collapse 3+ blank lines to 2
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim();
+  return { cleaned, count };
+}
+
+function formatAttendees(attendees, organizer) {
+  const required = attendees.filter(a => !a.role.includes('OPT'));
+  const optional = attendees.filter(a => a.role.includes('OPT'));
+
+  let out = '\n\n--- Attendees ---';
+  if (required.length > 0) {
+    out += '\nRequired:\n';
+    out += required.map(a => `  - ${a.cn || '(no name)'} <${a.email}>`).join('\n');
+  }
+  if (optional.length > 0) {
+    out += '\nOptional:\n';
+    out += optional.map(a => `  - ${a.cn || '(no name)'} <${a.email}>`).join('\n');
+  }
+  if (organizer) {
+    out += `\nOrganizer:\n  - ${organizer.cn || '(no name)'} <${organizer.email}>`;
+  }
+  out += '\n-----------------';
+  return out;
+}
+
+function foldLine(line) {
+  if (line.length <= 75) return line;
+  let out = '';
+  while (line.length > 75) {
+    out += line.slice(0, 75) + '\r\n ';
+    line = line.slice(75);
+  }
+  out += line;
+  return out;
+}
+
+function escapeICSValue(val) {
+  return val.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+}
+
+async function processFiles(opts) {
+  cleanedEvents = [];
+  calendarMeta = {};
+  originalTotalBytes = 0;
+  cleanedTotalBytes = 0;
+  stats = { events: 0, attendeesTotal: 0, linksStripped: 0, warnings: [], filesIn: rawFiles.length };
+
+  for (const file of rawFiles) {
+    const text = await readFile(file);
+    originalTotalBytes += new Blob([text]).size;
+    const parsed = parseICS(text);
+
+    // Take meta from first file
+    if (!calendarMeta._seen) {
+      calendarMeta = { ...parsed.meta, _timezones: parsed.timezones, _seen: true };
+    } else {
+      // Merge timezones (deduplicate by first TZID line)
+      for (const tz of parsed.timezones) {
+        const tzid = (tz.match(/TZID:([^\r\n]+)/) || [])[1];
+        if (tzid && !calendarMeta._timezones.some(t => t.includes('TZID:' + tzid))) {
+          calendarMeta._timezones.push(tz);
+        }
+      }
+    }
+
+    for (const event of parsed.events) {
+      stats.events++;
+      const isDeclined = event._selfPartstat === 'DECLINED';
+
+      // Handle declined events per user preference
+      if (isDeclined && opts.declinedAction === 'skip') {
+        stats.declinedSkipped = (stats.declinedSkipped || 0) + 1;
+        continue; // drop entirely — don't add to cleanedEvents
+      }
+
+      let desc = event._description || '';
+      let linksRemoved = 0;
+      const attendeeCount = event._attendees.length;
+      const cappedOut = opts.attendeeCap < Infinity && attendeeCount > opts.attendeeCap;
+
+      if (cappedOut) {
+        desc = desc + `\n\n[${attendeeCount} attendees — not listed (over cap of ${opts.attendeeCap})]`;
+        stats.cappedEvents = (stats.cappedEvents || 0) + 1;
+      } else if (opts.preserveAttendees && (attendeeCount > 0 || event._organizer)) {
+        const atBlock = formatAttendees(event._attendees, event._organizer);
+        desc = desc + atBlock;
+        stats.attendeesTotal += attendeeCount;
+      }
+
+      if (opts.stripLinks) {
+        const result = stripMeetingLinks(desc);
+        if (result.count > 0) {
+          linksRemoved = result.count;
+          stats.linksStripped += result.count;
+          desc = result.cleaned;
+        }
+      }
+
+      if (!event._dtstart) {
+        stats.warnings.push(`Event "${event._summary || '(no title)'}" is missing a start date — may not import correctly.`);
+      }
+      if (!cappedOut && event._rrule && attendeeCount > 50) {
+        stats.warnings.push(`Recurring event "${event._summary}" has ${attendeeCount} attendees — large event.`);
+      }
+      if (isDeclined) stats.declinedFlagged = (stats.declinedFlagged || 0) + 1;
+
+      cleanedEvents.push({
+        ...event,
+        _cleanedDesc: desc,
+        _linksRemoved: linksRemoved,
+        _cappedOut: cappedOut,
+        _isDeclined: isDeclined,
+        _opts: opts
+      });
+    }
+  }
+
+  // Calculate cleaned byte size
+  const allCleaned = buildICS(cleanedEvents, calendarMeta);
+  cleanedTotalBytes = new Blob([allCleaned]).size;
+}
+
+function buildEventICS(event, opts) {
+  const propsToSkip = new Set(['ATTENDEE', 'ORGANIZER', 'DESCRIPTION']);
+  if (opts.stripInvite) {
+    ['METHOD', 'X-MICROSOFT-CDO-BUSYSTATUS', 'X-MICROSOFT-CDO-INTENDEDSTATUS',
+     'X-MS-OLK-FORCEINSPECTOROPEN', 'X-MS-OLK-AUTOFILLLOCATION',
+     'X-GOOGLE-CONFERENCE', 'CONFERENCE'].forEach(k => propsToSkip.add(k));
+  }
+
+  const lines = ['BEGIN:VEVENT'];
+
+  for (const raw of event._lines) {
+    if (raw === 'BEGIN:VEVENT' || raw === 'END:VEVENT') continue;
+    const sep = raw.indexOf(':');
+    if (sep === -1) continue;
+    const rawKey = raw.substring(0, sep).trim();
+    const keyBase = rawKey.split(';')[0].toUpperCase();
+    if (propsToSkip.has(keyBase)) continue;
+    if (opts.stripInvite && keyBase.startsWith('ATTENDEE')) continue;
+    if (opts.stripAlarms && (keyBase === 'BEGIN' && raw.includes('VALARM'))) continue;
+
+    // Prepend [DECLINED] to the event title when flag option is active
+    if (keyBase === 'SUMMARY' && event._isDeclined && opts.declinedAction === 'flag') {
+      const val = raw.substring(sep + 1);
+      lines.push(foldLine('SUMMARY:[DECLINED] ' + val));
+      continue;
+    }
+
+    lines.push(foldLine(raw));
+  }
+
+  // Add cleaned description
+  if (event._cleanedDesc !== undefined) {
+    const escaped = escapeICSValue(event._cleanedDesc);
+    lines.push(foldLine('DESCRIPTION:' + escaped));
+  }
+
+  lines.push('END:VEVENT');
+  return lines.join('\r\n');
+}
+
+function buildICS(events, meta) {
+  const header = ['BEGIN:VCALENDAR'];
+  if (meta.VERSION) header.push('VERSION:' + meta.VERSION);
+  if (meta.PRODID) header.push('PRODID:' + meta.PRODID);
+  if (meta.CALSCALE) header.push('CALSCALE:' + meta.CALSCALE);
+  if (meta['X-WR-CALNAME']) header.push('X-WR-CALNAME:' + meta['X-WR-CALNAME']);
+  if (meta['X-WR-CALDESC']) header.push('X-WR-CALDESC:' + meta['X-WR-CALDESC']);
+  if (meta['X-WR-TIMEZONE']) header.push('X-WR-TIMEZONE:' + meta['X-WR-TIMEZONE']);
+
+  const tzBlocks = (meta._timezones || []).join('\r\n');
+  const eventBlocks = events.map(e => buildEventICS(e, e._opts || {})).join('\r\n');
+  const footer = 'END:VCALENDAR';
+
+  const raw = header.join('\r\n') + '\r\n' + (tzBlocks ? tzBlocks + '\r\n' : '') + eventBlocks + '\r\n' + footer;
+
+  // RFC 5545 requires CRLF throughout — normalise any bare LF that slipped through
+  // (e.g. from VTIMEZONE blocks parsed with \n, or description text with literal newlines)
+  return raw.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
+}
+
+function renderReport() {
+  const pct = originalTotalBytes > 0
+    ? Math.round((1 - cleanedTotalBytes / originalTotalBytes) * 100) : 0;
+  const cleanedPct = Math.max(5, 100 - pct);
+
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">Events processed</div>
+      <div class="stat-value">${stats.events.toLocaleString()}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Attendees preserved</div>
+      <div class="stat-value green">${stats.attendeesTotal.toLocaleString()}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Link blocks removed</div>
+      <div class="stat-value accent">${stats.linksStripped.toLocaleString()}</div>
+    </div>
+    ${stats.cappedEvents ? `
+    <div class="stat-card">
+      <div class="stat-label">Large events skipped</div>
+      <div class="stat-value" style="color:var(--gold);">${stats.cappedEvents.toLocaleString()}</div>
+      <div class="stat-sub">attendees over limit</div>
+    </div>` : ''}
+    ${stats.declinedSkipped ? `
+    <div class="stat-card">
+      <div class="stat-label">Declined — removed</div>
+      <div class="stat-value" style="color:var(--accent);">${stats.declinedSkipped.toLocaleString()}</div>
+      <div class="stat-sub">not in archive</div>
+    </div>` : ''}
+    ${stats.declinedFlagged && !stats.declinedSkipped ? `
+    <div class="stat-card">
+      <div class="stat-label">Declined — flagged</div>
+      <div class="stat-value" style="color:var(--gold);">${stats.declinedFlagged.toLocaleString()}</div>
+      <div class="stat-sub">[DECLINED] prefix added</div>
+    </div>` : ''}
+    <div class="stat-card">
+      <div class="stat-label">Source files</div>
+      <div class="stat-value">${stats.filesIn}</div>
+    </div>
+  `;
+
+  document.getElementById('reductionPct').textContent = pct + '% smaller';
+  document.getElementById('labelOriginal').textContent = 'Original: ' + fmtBytes(originalTotalBytes);
+  document.getElementById('labelCleaned').textContent = 'Cleaned: ' + fmtBytes(cleanedTotalBytes);
+
+  setTimeout(() => {
+    document.getElementById('barCleaned').style.width = cleanedPct + '%';
+  }, 100);
+
+  const warnSection = document.getElementById('warningSection');
+  if (stats.warnings.length > 0) {
+    warnSection.classList.remove('hidden');
+    warnSection.innerHTML = stats.warnings.map(w => `<div class="warning-item">${w}</div>`).join('');
+  } else {
+    warnSection.classList.add('hidden');
+  }
+
+  const previewList = document.getElementById('previewList');
+  const previewEvents = cleanedEvents.slice(0, 30);
+  previewList.innerHTML = previewEvents.map((ev, i) => {
+    const badges = [];
+    if (ev._isDeclined) badges.push(`<span class="badge" style="background:#fff0ee;color:#c8432a;border:1px solid #c8432a;">declined</span>`);
+    if (ev._linksRemoved > 0) badges.push(`<span class="badge badge-cleaned">${ev._linksRemoved} links removed</span>`);
+    if (ev._cappedOut) badges.push(`<span class="badge" style="background:var(--gold-light);color:var(--gold);border:1px solid var(--gold);">${ev._attendees.length} attendees skipped</span>`);
+    else if (ev._attendees.length > 0) badges.push(`<span class="badge badge-attendees">${ev._attendees.length} attendees</span>`);
+    if (ev._opts && ev._opts.stripInvite) badges.push('<span class="badge badge-stripped">invite stripped</span>');
+
+    const dateStr = formatICSDate(ev._dtstart);
+    const desc = (ev._cleanedDesc || '(no description)').slice(0, 800);
+    return `
+      <div class="event-card">
+        <div class="event-header" data-i="${i}">
+          <div>
+            <div class="event-title">${ev._summary || '(no title)'}</div>
+            <div class="event-date">${dateStr}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <div class="event-badges">${badges.join('')}</div>
+            <span class="event-chevron" id="chev-${i}">▾</span>
+          </div>
+        </div>
+        <pre class="event-body" id="body-${i}">${htmlEsc(desc)}</pre>
+      </div>
+    `;
+  }).join('') + (cleanedEvents.length > 30 ? `<p style="font-size:13px;color:var(--ink-3);text-align:center;padding:1rem 0;">…and ${cleanedEvents.length - 30} more events</p>` : '');
+
+  previewList.querySelectorAll('.event-header').forEach(h => {
+    h.addEventListener('click', () => {
+      const i = h.dataset.i;
+      const body = document.getElementById('body-' + i);
+      const chev = document.getElementById('chev-' + i);
+      body.classList.toggle('open');
+      chev.classList.toggle('open');
+    });
+  });
+}
+
+function formatICSDate(str) {
+  if (!str) return 'no date';
+  try {
+    // Strip TZID parameter prefix if present (e.g. "America/New_York:20250817T164000")
+    const raw = str.includes(':') ? str.split(':').pop() : str;
+
+    const datePart = raw.slice(0, 8);
+    const timePart = raw.length >= 13 ? raw.slice(9, 15) : null;
+
+    // Parse date components directly — never pass to new Date() as a string
+    // because "YYYY-MM-DD" is treated as UTC midnight, shifting the day for users
+    // west of UTC (e.g. EST shows Aug 16 for an Aug 17 UTC midnight event)
+    const y = parseInt(datePart.slice(0, 4), 10);
+    const mo = parseInt(datePart.slice(4, 6), 10) - 1; // 0-based
+    const d = parseInt(datePart.slice(6, 8), 10);
+
+    const dateStr = new Date(y, mo, d).toLocaleDateString('en-US', {
+      year: 'numeric', month: 'short', day: 'numeric'
+    });
+
+    if (!timePart) return dateStr;
+
+    // Format time from HHMMSS
+    const hh = parseInt(timePart.slice(0, 2), 10);
+    const mm = timePart.slice(2, 4);
+    const ampm = hh >= 12 ? 'pm' : 'am';
+    const h12 = hh % 12 || 12;
+    const isUTC = raw.endsWith('Z');
+    const timeStr = `${h12}:${mm}${ampm}${isUTC ? ' UTC' : ''}`;
+
+    return `${dateStr} · ${timeStr}`;
+  } catch { return str; }
+}
+
+function htmlEsc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// SPLIT & DOWNLOAD
+document.getElementById('splitBtn').addEventListener('click', () => {
+  const chunks = splitIntoChunks();
+  renderDownloads(chunks);
+  downloadSection.classList.remove('hidden');
+  downloadSection.scrollIntoView({ behavior: 'smooth' });
+});
+
+function splitIntoChunks() {
+  const headerLines = ['BEGIN:VCALENDAR'];
+  const meta = calendarMeta;
+  if (meta.VERSION) headerLines.push('VERSION:' + meta.VERSION);
+  if (meta.PRODID) headerLines.push('PRODID:' + meta.PRODID);
+  if (meta.CALSCALE) headerLines.push('CALSCALE:' + meta.CALSCALE);
+  if (meta['X-WR-CALNAME']) headerLines.push('X-WR-CALNAME:' + meta['X-WR-CALNAME']);
+  if (meta['X-WR-CALDESC']) headerLines.push('X-WR-CALDESC:' + meta['X-WR-CALDESC']);
+  if (meta['X-WR-TIMEZONE']) headerLines.push('X-WR-TIMEZONE:' + meta['X-WR-TIMEZONE']);
+  const tzBlock = (meta._timezones || []).join('\r\n');
+  const header = headerLines.join('\r\n') + '\r\n' + (tzBlock ? tzBlock + '\r\n' : '');
+  const footer = '\r\nEND:VCALENDAR';
+
+  const chunks = [];
+  let currentEvents = [];
+  let currentSize = new Blob([header + footer]).size;
+
+  for (const ev of cleanedEvents) {
+    const evText = buildEventICS(ev, ev._opts || {}) + '\r\n';
+    const evSize = new Blob([evText]).size;
+    if ((currentSize + evSize > MAX_CHUNK_BYTES || currentEvents.length >= MAX_CHUNK_EVENTS) && currentEvents.length > 0) {
+      chunks.push(currentEvents);
+      currentEvents = [];
+      currentSize = new Blob([header + footer]).size;
+    }
+    currentEvents.push(ev);
+    currentSize += evSize;
+  }
+  if (currentEvents.length > 0) chunks.push(currentEvents);
+
+  return chunks.map((evs, i) => {
+    const raw = header + evs.map(e => buildEventICS(e, e._opts || {})).join('\r\n') + footer;
+    const content = raw.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
+    return { content, index: i + 1, size: new Blob([content]).size, count: evs.length };
+  });
+}
+
+function renderDownloads(chunks) {
+  window._chunks = chunks;
+  let currentIndex = 0;
+  let hasDownloaded = false;
+
+  const guidedPanel = document.getElementById('guidedPanel');
+  const allAtOncePanel = document.getElementById('allAtOncePanel');
+  const modeGuided = document.getElementById('modeGuided');
+  const modeAll = document.getElementById('modeAll');
+
+  // Mode toggle
+  modeGuided.addEventListener('click', () => {
+    guidedPanel.classList.remove('hidden');
+    allAtOncePanel.classList.add('hidden');
+    modeGuided.style.fontWeight = '500';
+    modeGuided.style.borderColor = 'var(--ink)';
+    modeAll.style.fontWeight = '400';
+    modeAll.style.borderColor = '';
+  });
+  modeAll.addEventListener('click', () => {
+    allAtOncePanel.classList.remove('hidden');
+    guidedPanel.classList.add('hidden');
+    modeAll.style.fontWeight = '500';
+    modeAll.style.borderColor = 'var(--ink)';
+    modeGuided.style.fontWeight = '400';
+    modeGuided.style.borderColor = '';
+  });
+
+  // Populate "all at once" grid
+  const grid = document.getElementById('downloadGrid');
+  grid.innerHTML = chunks.map((c, i) => `
+    <div class="download-card" data-i="${i}">
+      <span class="download-icon">📅</span>
+      <div class="download-info">
+        <div class="name">calendar-archive-${String(i+1).padStart(2,'0')}.ics</div>
+        <div class="size">${c.count} events · ${fmtBytes(c.size)}</div>
+      </div>
+    </div>
+  `).join('');
+  grid.querySelectorAll('.download-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const c = chunks[+card.dataset.i];
+      downloadICS(c.content, `calendar-archive-${String(c.index).padStart(2,'0')}.ics`);
+    });
+  });
+  document.getElementById('downloadAllBtn').addEventListener('click', () => {
+    chunks.forEach((c, i) => {
+      setTimeout(() => downloadICS(c.content, `calendar-archive-${String(i+1).padStart(2,'0')}.ics`), i * 250);
+    });
+  });
+
+  // Guided importer
+  function showStep(i) {
+    if (i >= chunks.length) {
+      // All done
+      document.getElementById('guidedCard').classList.add('hidden');
+      document.getElementById('guidedActions').classList.add('hidden');
+      document.getElementById('guidedDone').classList.remove('hidden');
+      document.getElementById('doneMessage').textContent =
+        `All ${chunks.length} file${chunks.length > 1 ? 's' : ''} imported — ${cleanedEvents.length.toLocaleString()} events preserved in your Google Calendar.`;
+      document.getElementById('guidedProgressBar').style.width = '100%';
+      document.getElementById('progressLabel').textContent = `Complete`;
+      return;
+    }
+
+    hasDownloaded = false;
+    const c = chunks[i];
+    const fname = `calendar-archive-${String(c.index).padStart(2,'0')}.ics`;
+
+    document.getElementById('guidedFilename').textContent = fname;
+    document.getElementById('guidedFilenameCode').textContent = fname;
+    document.getElementById('guidedFilesize').textContent = `${c.count} events · ${fmtBytes(c.size)}`;
+    document.getElementById('progressLabel').textContent = `File ${i + 1} of ${chunks.length}`;
+    document.getElementById('guidedProgressBar').style.width = `${Math.round((i / chunks.length) * 100)}%`;
+
+    // Reset step styles
+    document.querySelectorAll('.guided-step').forEach(s => s.classList.remove('done'));
+
+    // Reset buttons
+    const dlBtn = document.getElementById('guidedDownloadBtn');
+    const nextBtn = document.getElementById('guidedNextBtn');
+    dlBtn.style.display = '';
+    nextBtn.style.display = 'none';
+    dlBtn.textContent = `⬇ Download file ${i + 1} of ${chunks.length}`;
+  }
+
+  document.getElementById('guidedDownloadBtn').addEventListener('click', () => {
+    const c = chunks[currentIndex];
+    const fname = `calendar-archive-${String(c.index).padStart(2,'0')}.ics`;
+    downloadICS(c.content, fname);
+    hasDownloaded = true;
+
+    // Mark step 1 done, show "next" button after a short delay
+    setTimeout(() => {
+      document.querySelector('.guided-step[data-step="1"]').classList.add('done');
+    }, 400);
+    setTimeout(() => {
+      const nextBtn = document.getElementById('guidedNextBtn');
+      nextBtn.style.display = '';
+      nextBtn.textContent = currentIndex + 1 < chunks.length
+        ? `Done, next file (${currentIndex + 2} of ${chunks.length}) →`
+        : `Done — finish ✓`;
+    }, 800);
+  });
+
+  document.getElementById('guidedNextBtn').addEventListener('click', () => {
+    // Mark remaining steps done visually
+    document.querySelectorAll('.guided-step').forEach(s => s.classList.add('done'));
+    setTimeout(() => {
+      currentIndex++;
+      showStep(currentIndex);
+    }, 300);
+  });
+
+  showStep(0);
+}
+
+function downloadICS(content, filename) {
+  const blob = new Blob([content], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// RESET
+function doReset() {
+  rawFiles = [];
+  cleanedEvents = [];
+  calendarMeta = {};
+  fileInput.value = '';
+  renderFileList();
+  reportSection.classList.add('hidden');
+  downloadSection.classList.add('hidden');
+  optionSection.classList.add('hidden');
+  // Re-show guided card in case we finished
+  const gc = document.getElementById('guidedCard');
+  const ga = document.getElementById('guidedActions');
+  const gd = document.getElementById('guidedDone');
+  if (gc) gc.classList.remove('hidden');
+  if (ga) ga.classList.remove('hidden');
+  if (gd) gd.classList.add('hidden');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+document.getElementById('resetBtn').addEventListener('click', doReset);
+['resetBtn2','resetBtn3','resetBtn4'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('click', doReset);
+});
+</script>
+</body>
+</html>
