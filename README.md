@@ -1,6 +1,15 @@
-Chronicle
-Convert corporate calendar exports into a clean personal archive.
+# Chronicle
+
+### ▶ [**Open the live app → paradekrewe.github.io/Chronicle**](https://paradekrewe.github.io/Chronicle/)
+
+*Nothing to install. Click the link above and use it right in your browser.*
+
+---
+
+**Convert corporate calendar exports into a clean personal archive.**
+
 Chronicle is a fully browser-based tool for people leaving a job who want to keep their work calendar history as a personal diary. It takes Google Workspace `.ics` (or `.zip`) exports, strips out stale meeting junk, preserves the people you worked with, and splits the result into Google Calendar–ready import files.
+
 No server. No upload. No account. Everything runs locally in your browser.
 ---
 The problem it solves
@@ -25,9 +34,11 @@ Splits into importable chunks — stays under both Google's 1 MB file size limit
 Guided import flow — step-by-step instructions walk you through each file one at a time with a progress bar, or download all at once if you prefer
 ---
 How to use
-Option 1 — Use it directly
-Open `calendar-cleaner.html` in any modern browser. No build step, no dependencies, no installation.
-Option 2 — Host on GitHub Pages
+Option 1 — Use the hosted app (easiest)
+Just open **[paradekrewe.github.io/Chronicle](https://paradekrewe.github.io/Chronicle/)**. No download, no build step, no installation.
+Option 2 — Run the file locally
+Download `index.html` from this repository and open it in any modern browser. It works fully offline — no dependencies to install.
+Option 3 — Host your own copy on GitHub Pages
 Fork this repository
 Go to Settings → Pages
 Set source to `main` branch, `/ (root)`
